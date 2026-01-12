@@ -416,6 +416,12 @@ python app/main.py
 
 ---
 
+### 6. Run the Application backend
+
+```bash
+uvicorn app.api:app --reload
+```
+
 ## What This MVP Does NOT Do
 
 * ❌ No AWS resource provisioning
