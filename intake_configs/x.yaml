@@ -1,4 +1,4 @@
-intake_id: '121'
+intake_id: '1231'
 database_name: x
 database_s3_location: x
 database_description: x
@@ -13,4 +13,4 @@ enterprise_or_func_subgrp_name: x
 data_owner_email: x
 data_owner_github_uname: x
 data_leader: x
-pr_title: Update Glue Database Configuration for x Environment
+pr_title: Creating a new file for the db as x
