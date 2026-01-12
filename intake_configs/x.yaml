@@ -1,0 +1,15 @@
+intake_id: '121'
+database_name: x
+database_s3_location: x
+database_description: x
+aws_account_id: x
+region: x
+data_construct: x
+data_env: x
+data_layer: x
+source_name: x
+enterprise_or_func_name: x
+enterprise_or_func_subgrp_name: x
+data_owner_email: x
+data_owner_github_uname: x
+data_leader: x
