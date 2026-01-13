@@ -7,7 +7,7 @@ load_dotenv()
 llm = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY"),
     model="llama-3.1-8b-instant",
-    temperature=0.4
+    temperature=0.3
 )
 
 REQUIRED_FIELDS = [
@@ -46,105 +46,89 @@ FIELD_QUESTIONS = {
     "data_leader": "Who is the data leader?",
 }
 
-# -------------------------------
-# STATE (SIMPLE & SAFE)
-# -------------------------------
 state = {
     "active": False,
-    "current_index": 0,
+    "index": 0,
     "data": {},
-    "ready": False,
+    "awaiting_pr_title": False,
 }
 
-# -------------------------------
-# HELPERS
-# -------------------------------
 def is_glue_intent(text: str) -> bool:
-    text = text.replace(" ", "")
-    return any(x in text for x in ["glue", "gluedb", "gludb", "gluedatabase"])
+    t = text.replace(" ", "")
+    return any(x in t for x in ["glue", "gluedb", "gludb", "gluedatabase"])
 
-def is_create_intent(text: str) -> bool:
-    return text in {"create", "yes", "yes please", "proceed", "go ahead"}
-
-# -------------------------------
-# MAIN ENTRY
-# -------------------------------
 def ask_groq(user_input: str):
     text = user_input.lower().strip()
 
-    # ---- SUPPORTED PRs ----
+    # ---------- CAPABILITIES ----------
     if "pr" in text and "support" in text:
         return {
             "type": "message",
             "content": (
-                "I can help you with:\n\n"
+                "I can help with:\n\n"
                 "✅ Glue Database PRs\n"
                 "🚧 IAM PRs (coming soon)\n"
                 "🚧 Resource Policy PRs (coming soon)\n\n"
-                "Just say **create glue db** to begin 🚀"
+                "Say **create glue db** to begin 🚀"
             )
         }
 
-    # ---- START GLUE FLOW ----
+    # ---------- START FLOW ----------
     if is_glue_intent(text) and not state["active"]:
         state["active"] = True
-        state["current_index"] = 0
+        state["index"] = 0
         state["data"] = {}
-        state["ready"] = False
+        state["awaiting_pr_title"] = False
 
-        field = REQUIRED_FIELDS[0]
+        first = REQUIRED_FIELDS[0]
         return {
             "type": "message",
-            "content": f"Awesome 👍 Let’s create a Glue Database.\n\n{FIELD_QUESTIONS[field]}"
+            "content": f"Great 👍 Let’s get started.\n\n{FIELD_QUESTIONS[first]}"
         }
 
-    # ---- COLLECT DATA ----
-    if state["active"] and not state["ready"]:
-        field = REQUIRED_FIELDS[state["current_index"]]
+    # ---------- COLLECT FIELDS ----------
+    if state["active"] and not state["awaiting_pr_title"]:
+        field = REQUIRED_FIELDS[state["index"]]
         state["data"][field] = user_input.strip()
-        state["current_index"] += 1
+        state["index"] += 1
 
-        if state["current_index"] < len(REQUIRED_FIELDS):
-            next_field = REQUIRED_FIELDS[state["current_index"]]
+        if state["index"] < len(REQUIRED_FIELDS):
+            next_field = REQUIRED_FIELDS[state["index"]]
             return {
                 "type": "message",
                 "content": FIELD_QUESTIONS[next_field]
             }
-        else:
-            state["ready"] = True
-            return {
-                "type": "message",
-                "content": (
-                    "Nice 👍 I’ve captured all required details.\n\n"
-                    "Type **create** to generate the YAML and raise the PR 🚀"
-                )
-            }
 
-    # ---- CREATE PR ----
-    if state["ready"] and is_create_intent(text):
+        state["awaiting_pr_title"] = True
+        return {
+            "type": "message",
+            "content": (
+                "Nice 👍 I’ve captured all required details.\n\n"
+                "What should be the **Pull Request title**?"
+            )
+        }
+
+    # ---------- PR TITLE ----------
+    if state["awaiting_pr_title"]:
+        pr_title = user_input.strip()
+
         payload = state["data"]
 
-        # RESET STATE CLEANLY
+        # RESET STATE
         state["active"] = False
-        state["ready"] = False
-        state["current_index"] = 0
+        state["index"] = 0
         state["data"] = {}
+        state["awaiting_pr_title"] = False
 
         return {
             "type": "action",
             "action": "create_pr",
-            "data": payload
+            "data": payload,
+            "pr_title": pr_title
         }
 
-    # ---- INVALID CREATE ----
-    if is_create_intent(text) and not state["ready"]:
-        return {
-            "type": "message",
-            "content": "⚠️ I need to collect all details first. Start with **create glue db** 🙂"
-        }
-
-    # ---- FALLBACK ----
+    # ---------- FALLBACK ----------
     return {
         "type": "message",
-        "content": "🙂 I didn’t quite get that. You can say **create glue db** to begin."
+        "content": "🙂 You can say **create glue db** to start."
     }
