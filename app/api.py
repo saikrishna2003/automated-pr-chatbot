@@ -10,15 +10,9 @@ from app.tools.glue_pr_tool import create_glue_db_pr, GlueDBPRInput
 
 load_dotenv()
 
-# -------------------------------
-# LLM (GENERAL CHAT ONLY)
-# -------------------------------
-plain_llm = ChatGroq(
-    api_key=os.getenv("GROQ_API_KEY"),
-    model="llama-3.1-8b-instant",
-    temperature=0.1,
-)
-
+# =========================================================
+# FastAPI app
+# =========================================================
 app = FastAPI(title="Data Platform Intake Bot")
 
 app.add_middleware(
@@ -28,11 +22,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------------
-# Intake State (POC)
-# -------------------------------
-SESSION_DATA: Dict[str, str] = {}
+# =========================================================
+# LLM (GENERAL CHAT ONLY – NEVER INTAKE)
+# =========================================================
+plain_llm = ChatGroq(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model="llama-3.1-8b-instant",
+    temperature=0.1,
+)
+
+# =========================================================
+# Intake State (POC – global)
+# =========================================================
 INTAKE_ACTIVE = False
+SESSION_DATA: Dict[str, str] = {}
 
 REQUIRED_FIELDS = [
     "intake_id",
@@ -53,7 +56,9 @@ REQUIRED_FIELDS = [
     "pr_title",
 ]
 
-
+# =========================================================
+# Helpers
+# =========================================================
 def get_next_field():
     for field in REQUIRED_FIELDS:
         if field not in SESSION_DATA:
@@ -61,79 +66,88 @@ def get_next_field():
     return None
 
 
-def is_start_intake(text: str) -> bool:
-    t = text.lower().strip()
+def is_glue_intent(text: str) -> bool:
+    t = text.lower().replace(" ", "")
     return any(
-        phrase in t
-        for phrase in [
-            "create glue",
-            "create gluedb",
-            "gluedb creation",
-            "start gluedb",
-            "yes",
-            "ok lets start",
-            "let's start",
+        k in t
+        for k in [
+            "glue",
+            "gluedb",
+            "gluedatabase",
+            "createglue",
+            "creategluedb",
         ]
     )
 
 
+# =========================================================
+# Request model
+# =========================================================
 class ChatRequest(BaseModel):
     messages: List[dict]
 
 
+# =========================================================
+# Chat endpoint
+# =========================================================
 @app.post("/chat")
 def chat(req: ChatRequest):
     global INTAKE_ACTIVE
 
     user_msg = req.messages[-1]["content"].strip()
 
-    # =================================================
-    # MODE 1 — BEFORE INTAKE (GENERAL CHAT)
-    # =================================================
-    if not INTAKE_ACTIVE:
-        # Explicit start of intake
-        if is_start_intake(user_msg):
-            INTAKE_ACTIVE = True
-            SESSION_DATA.clear()
-            return {
-                "response": "Great 👍 Let’s start.\nWhat is the intake ID?"
-            }
-
-        # General product-scoped chat ONLY
-        response = plain_llm.invoke(
-            [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are the Data Platform Intake Bot.\n"
-                        "You ONLY support creating automated Glue Database Pull Requests.\n"
-                        "If asked about supported PRs, say you support Glue Database PR creation.\n"
-                        "Do NOT invent intake steps.\n"
-                        "If the user wants to start, instruct them to say 'create glue db'."
-                    ),
-                }
-            ] + req.messages
-        )
-        return {"response": response.content}
-
-    # =================================================
-    # MODE 2 — INTAKE IN PROGRESS (BACKEND ONLY)
-    # =================================================
-    next_field = get_next_field()
-    SESSION_DATA[next_field] = user_msg
-
-    next_field = get_next_field()
-
-    # All fields collected → CREATE PR
-    if not next_field:
-        result = create_glue_db_pr(
-            GlueDBPRInput(**SESSION_DATA)
-        )
+    # =====================================================
+    # HARD GATE: START GLUEDB INTAKE
+    # =====================================================
+    if not INTAKE_ACTIVE and is_glue_intent(user_msg):
+        INTAKE_ACTIVE = True
         SESSION_DATA.clear()
-        INTAKE_ACTIVE = False
-        return {"response": result}
+        return {
+            "response": "Great 👍 Let’s start.\nWhat is the intake ID?"
+        }
 
-    # Ask next REQUIRED field (mandatory)
-    return {
-        "response": f"What is the {next_field.replace('_', ' ')}?"
-    }
+    # =====================================================
+    # INTAKE MODE (NO LLM ALLOWED)
+    # =====================================================
+    if INTAKE_ACTIVE:
+        next_field = get_next_field()
+
+        # store user response
+        SESSION_DATA[next_field] = user_msg
+
+        next_field = get_next_field()
+
+        # all fields collected → create PR
+        if not next_field:
+            result = create_glue_db_pr(
+                GlueDBPRInput(**SESSION_DATA)
+            )
+            SESSION_DATA.clear()
+            INTAKE_ACTIVE = False
+            return {"response": result}
+
+        # ask next mandatory field
+        return {
+            "response": f"What is the {next_field.replace('_', ' ')}?"
+        }
+
+    # =====================================================
+    # GENERAL CHAT (PRODUCT-SCOPED ONLY)
+    # =====================================================
+    response = plain_llm.invoke(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "You are the Data Platform Intake Bot.\n"
+                    "You ONLY support creating automated Glue Database Pull Requests.\n"
+                    "If asked what PRs you support, say: Glue Database PR creation.\n"
+                    "Do NOT invent intake steps.\n"
+                    "Do NOT simulate PR creation.\n"
+                    "If the user wants to start, instruct them to say 'create glue db'."
+                ),
+            }
+        ] + req.messages
+    )
+
+    return {"response": response.content}
