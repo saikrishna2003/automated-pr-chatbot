@@ -1,0 +1,15 @@
+intake_id: '123123123'
+database_name: minerva_dev
+database_s3_location: s3://123
+database_description: THis is description
+aws_account_id: '123421'
+source_name: AGTR
+enterprise_or_func_name: AGTR
+enterprise_or_func_subgrp_name: ehs
+region: us-east1
+data_construct: limited
+data_env: dev
+data_layer: cln
+data_leader: sai
+data_owner_email: sai@gmail,com
+data_owner_github_uname: SAI
