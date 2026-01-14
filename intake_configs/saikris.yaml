@@ -1,0 +1,15 @@
+intake_id: '123'
+database_name: saikris
+database_s3_location: saikris
+database_description: saikris
+aws_account_id: saikris
+source_name: saikris
+enterprise_or_func_name: saikris
+enterprise_or_func_subgrp_name: saikris
+region: saikris
+data_construct: saikris
+data_env: saikris
+data_layer: saikris
+data_leader: saikris
+data_owner_email: saikris
+data_owner_github_uname: saikris
