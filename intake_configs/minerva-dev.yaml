@@ -1,0 +1,15 @@
+intake_id: 123xadfafd
+database_name: minerva-dev
+database_s3_location: s3://asdasdasd
+database_description: this is main db
+aws_account_id: '13746624'
+source_name: agtr
+enterprise_or_func_name: LATAM
+enterprise_or_func_subgrp_name: subgrp
+region: us-east1
+data_construct: dev
+data_env: dev
+data_layer: cln
+data_leader: sai
+data_owner_email: sai@gmail.com
+data_owner_github_uname: saikris
