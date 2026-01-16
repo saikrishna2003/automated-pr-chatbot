@@ -1,16 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Data Platform Intake Bot",
-  "description": "Chat with the Data Platform Intake Bot directly from GitHub.",
-  "version": "0.1",
-  "permissions": ["activeTab"],
+  "description": "AI-powered chatbot for automated Glue Database PR creation on GitHub",
+  "version": "2.0.0",
+  "permissions": [
+    "activeTab"
+  ],
   "content_scripts": [
     {
       "matches": [
         "https://github.com/*"
       ],
       "js": ["content.js"],
-      "css": ["style.css"]
+      "css": ["style.css"],
+      "run_at": "document_idle"
     }
-  ]
+  ],
+  "author": "Your Team Name"
 }

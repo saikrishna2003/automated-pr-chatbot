@@ -1,119 +1,342 @@
-/* ===============================
-   Chatbot Container
-================================ */
+/**
+ * Data Platform Intake Bot - Chatbot Styles
+ * Modern, clean UI for GitHub integration
+ */
+
+/* =========================================================
+   Main Chatbot Container
+   ========================================================= */
 #dpib-chatbot {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 360px;
-  height: 480px;
+  bottom: 20px;
+  right: 20px;
+  width: 380px;
+  height: 500px;
   background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  border: 1px solid #d0d7de;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  z-index: 10000;
+  transition: all 0.3s ease;
 }
 
-/* ===============================
+/* =========================================================
    Header
-================================ */
+   ========================================================= */
 #dpib-header {
-  height: 52px;
-  background: linear-gradient(135deg, #16a34a, #22c55e);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px 12px 0 0;
   font-weight: 600;
   font-size: 15px;
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
-}
-
-/* ===============================
-   Messages Area
-================================ */
-#dpib-messages {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
-  background: #f9fafb;
-}
-
-/* ===============================
-   Bot Message
-================================ */
-.dpib-bot {
-  max-width: 80%;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  color: #111827;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-/* ===============================
-   User Message
-================================ */
-.dpib-user {
-  max-width: 80%;
-  background: #dcfce7;
-  color: #065f46;
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  margin-left: auto;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-/* ===============================
-   Input Area
-================================ */
-#dpib-input {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  border-top: 1px solid #e5e7eb;
-  background: #ffffff;
+  cursor: move;
+  user-select: none;
 }
 
-/* Input */
-#dpib-input input {
-  flex: 1;
-  padding: 10px 12px;
-  font-size: 14px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  outline: none;
-}
-
-#dpib-input input:focus {
-  border-color: #22c55e;
-}
-
-/* Send Button */
-#dpib-input button {
-  margin-left: 10px;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
+#dpib-minimize {
+  background: rgba(255, 255, 255, 0.2);
   border: none;
-  background: #22c55e;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: bold;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  transition: background 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-#dpib-input button:hover {
-  background: #16a34a;
+#dpib-minimize:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* =========================================================
+   Messages Container
+   ========================================================= */
+#dpib-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f6f8fa;
+}
+
+/* Custom scrollbar */
+#dpib-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+#dpib-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#dpib-messages::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+#dpib-messages::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* =========================================================
+   Message Bubbles
+   ========================================================= */
+.dpib-bot,
+.dpib-user {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bot messages */
+.dpib-bot {
+  background: #ffffff;
+  color: #24292f;
+  align-self: flex-start;
+  border: 1px solid #d0d7de;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* User messages */
+.dpib-user {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+/* Error messages */
+.dpib-error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+/* =========================================================
+   Typing Indicator
+   ========================================================= */
+.dpib-typing {
+  background: #ffffff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #d0d7de;
+  align-self: flex-start;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.dpib-typing span {
+  width: 8px;
+  height: 8px;
+  background: #6366f1;
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.dpib-typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dpib-typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-6px);
+  }
+}
+
+/* =========================================================
+   Input Container
+   ========================================================= */
+#dpib-input-container {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  background: white;
+  border-top: 1px solid #d0d7de;
+  border-radius: 0 0 12px 12px;
+}
+
+#dpib-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#dpib-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+#dpib-input:disabled {
+  background: #f6f8fa;
+  cursor: not-allowed;
+}
+
+#dpib-send {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+#dpib-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+#dpib-send:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+#dpib-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   Formatted Text in Messages
+   ========================================================= */
+.dpib-bot strong,
+.dpib-user strong {
+  font-weight: 600;
+}
+
+.dpib-bot em,
+.dpib-user em {
+  font-style: italic;
+}
+
+.dpib-bot a,
+.dpib-user a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* =========================================================
+   Minimized State
+   ========================================================= */
+#dpib-chatbot.minimized {
+  height: 50px;
+}
+
+/* =========================================================
+   Responsive Design
+   ========================================================= */
+@media (max-width: 768px) {
+  #dpib-chatbot {
+    width: calc(100% - 40px);
+    height: calc(100% - 40px);
+    bottom: 0;
+    right: 0;
+    margin: 20px;
+    border-radius: 12px;
+  }
+}
+
+/* =========================================================
+   Dark Mode Support (Optional)
+   ========================================================= */
+@media (prefers-color-scheme: dark) {
+  #dpib-chatbot {
+    background: #161b22;
+    border-color: #30363d;
+  }
+
+  #dpib-messages {
+    background: #0d1117;
+  }
+
+  .dpib-bot {
+    background: #161b22;
+    color: #c9d1d9;
+    border-color: #30363d;
+  }
+
+  #dpib-input-container {
+    background: #161b22;
+    border-top-color: #30363d;
+  }
+
+  #dpib-input {
+    background: #0d1117;
+    color: #c9d1d9;
+    border-color: #30363d;
+  }
+
+  #dpib-input:focus {
+    border-color: #6366f1;
+  }
+
+  #dpib-messages::-webkit-scrollbar-thumb {
+    background: #30363d;
+  }
+}
+
+/* =========================================================
+   Success Animations
+   ========================================================= */
+@keyframes success {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.dpib-bot.success {
+  animation: success 0.5s ease;
+  border-color: #10b981;
+  background: #ecfdf5;
 }
