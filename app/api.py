@@ -247,6 +247,6 @@ def chat(req: ChatRequest):
 def health():
     return {
         "groq_key": bool(os.getenv("GROQ_API_KEY")),
-        "github_token": bool(os.getenv("GITHUB_TOKEN")),
+        "github_token": bool(os.getenv("GITHUB_TOKEN1")),
         "repo": os.getenv("REPO_NAME"),
     }

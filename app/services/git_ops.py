@@ -84,7 +84,7 @@ def create_pull_request(
 
     payload = {
         "title": pr_title,
-        "head": f"{fork_owner}:dev",
+        "head": "downloadmail8883-cyber:dev",
         "base": "dev",
         "body": pr_body,
     }

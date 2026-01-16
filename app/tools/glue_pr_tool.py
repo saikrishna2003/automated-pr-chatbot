@@ -71,7 +71,7 @@ def create_glue_db_pr(input: GlueDBPRInput) -> str:
         )
 
         pr = create_pull_request(
-            github_token=os.getenv("GITHUB_TOKEN"),
+            github_token=os.getenv("GITHUB_TOKEN1"),
             repo_name=os.getenv("REPO_NAME"),  # upstream repo
             pr_title=input.pr_title,
         )
