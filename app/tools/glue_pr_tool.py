@@ -95,16 +95,14 @@ class GlueDBPRInput(BaseModel):
 def create_glue_db_yaml(input: GlueDBPRInput) -> dict:
     """
     Create Glue Database configuration dictionary
-    This will be saved ONLY in the glue_databases folder
 
     Args:
         input: GlueDBPRInput with validated fields
 
     Returns:
-        Dictionary ready for YAML conversion with resource_type specified
+        Dictionary ready for YAML conversion
     """
     return {
-        "resource_type": "glue_database",  # Explicitly mark resource type
         "intake_id": input.intake_id,
         "database_name": input.database_name,
         "database_s3_location": input.database_s3_location,
@@ -121,22 +119,3 @@ def create_glue_db_yaml(input: GlueDBPRInput) -> dict:
         "data_owner_email": input.data_owner_email,
         "data_owner_github_uname": input.data_owner_github_uname,
     }
-
-
-def get_glue_db_file_path(database_name: str, base_path: str = "intake_configs") -> str:
-    """
-    Generate the correct file path for Glue database YAML
-    Ensures file goes into glue_databases folder ONLY
-
-    Args:
-        database_name: Name of the database
-        base_path: Base directory for configs
-
-    Returns:
-        Full path where the YAML should be saved
-    """
-    glue_db_folder = os.path.join(base_path, "glue_databases")
-    os.makedirs(glue_db_folder, exist_ok=True)
-
-    filename = f"{database_name}.yaml"
-    return os.path.join(glue_db_folder, filename)
