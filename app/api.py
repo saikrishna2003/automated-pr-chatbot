@@ -1,12 +1,11 @@
 """
 Data Platform Intake Bot - Main API
-UPDATED: Now supports IAM Roles
-STRICT VERSION: No data hallucination allowed
+With comprehensive validation layer
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import List, Dict, Optional
 import os
 import traceback
@@ -24,14 +23,14 @@ if str(app_dir) not in sys.path:
 
 try:
     from prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS, IAM_ROLE_FIELDS
-    from tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml
+    from tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml, get_validation_help
     from tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml
     from tools.iam_role_tool import IAMRolePRInput, create_iam_role_yaml
     from services.yaml_generator import generate_yaml
     from services.git_ops import create_pull_request
 except ImportError:
     from app.prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS, IAM_ROLE_FIELDS
-    from app.tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml
+    from app.tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml, get_validation_help
     from app.tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml
     from app.tools.iam_role_tool import IAMRolePRInput, create_iam_role_yaml
     from app.services.yaml_generator import generate_yaml
@@ -65,23 +64,18 @@ def parse_comma_separated(text: str, field_list: List[str]) -> Dict[str, str]:
 
 
 def parse_key_value(text: str) -> Dict[str, str]:
-    """
-    Parse key-value format input
-    Handles both simple and nested YAML structures
-    """
+    """Parse key-value format with basic YAML support"""
     import yaml
 
-    # Try to parse as YAML first for nested structures
+    # Try YAML parsing first
     try:
-        # Check if it looks like YAML (has proper newlines and indentation)
-        if '\n' in text and (':' in text):
-            parsed = yaml.safe_load(text)
-            if isinstance(parsed, dict):
-                return parsed
+        parsed = yaml.safe_load(text)
+        if isinstance(parsed, dict):
+            return parsed
     except:
         pass
 
-    # Fallback to simple key-value parsing
+    # Fallback to line-by-line parsing
     result = {}
     for line in text.strip().split('\n'):
         line = line.strip()
@@ -99,33 +93,7 @@ def smart_parse_input(text: str, resource_type: str) -> Dict[str, str]:
     elif resource_type == 's3_bucket':
         field_list = S3_BUCKET_FIELDS
     elif resource_type == 'iam_role':
-        # IAM roles require special handling due to nested structures
-        # For now, we'll only support key-value format for IAM roles
-        if '\n' not in text and ':' not in text:
-            raise ValueError(
-                "IAM roles must be provided in key-value format due to complex nested structures.\n\n"
-                "Please provide the data like this:\n"
-                "intake_id: INT-901\n"
-                "role_name: analytics-readonly-role\n"
-                "role_description: Read-only IAM role\n"
-                "aws_account_id: 123456789012\n"
-                "enterprise_or_func_name: DataPlatform\n"
-                "enterprise_or_func_subgrp_name: Analytics\n"
-                "role_owner: analytics.owner@company.com\n"
-                "data_env: prod\n"
-                "usage_type: analytics\n"
-                "compute_size: medium\n"
-                "max_session_duration: 8\n"
-                "access_to_resources:\n"
-                "  glue_databases:\n"
-                "    read:\n"
-                "      - glue_db_sales\n"
-                "      - glue_db_marketing\n"
-                "  execution_asset_prefixes:\n"
-                "    - s3://exec-assets/analytics/\n"
-                "    - s3://exec-assets/shared/"
-            )
-        return parse_key_value(text)
+        field_list = IAM_ROLE_FIELDS
     else:
         raise ValueError(f"Unknown resource type: {resource_type}")
 
@@ -137,8 +105,24 @@ def smart_parse_input(text: str, resource_type: str) -> Dict[str, str]:
     return parse_comma_separated(text, field_list)
 
 
+def format_validation_error(error: ValidationError) -> str:
+    """Format Pydantic validation errors in a user-friendly way"""
+    error_messages = []
+
+    for err in error.errors():
+        field = err['loc'][0] if err['loc'] else 'unknown'
+        msg = err['msg']
+
+        # Make field names more readable
+        field_display = field.replace('_', ' ').title()
+
+        error_messages.append(f"**{field_display}**: {msg}")
+
+    return "❌ **Validation Failed**\n\n" + "\n".join(error_messages)
+
+
 # =========================================================
-# PR Creation - Supports Glue DB, S3, and IAM Roles
+# PR Creation - Supports Glue DB, S3, and IAM
 # =========================================================
 def create_multi_resource_pr(
     glue_dbs: List[Dict],
@@ -170,7 +154,7 @@ def create_multi_resource_pr(
 
         created_files = []
 
-        # Create Glue DB files in glue_databases folder
+        # Create Glue DB files
         if glue_dbs:
             glue_db_dir = os.path.join(repo_root, "intake_configs", "glue_databases")
             os.makedirs(glue_db_dir, exist_ok=True)
@@ -186,7 +170,7 @@ def create_multi_resource_pr(
                 created_files.append(yaml_path)
                 print(f"✅ Created Glue DB YAML: {yaml_path}")
 
-        # Create S3 bucket files in s3_buckets folder
+        # Create S3 bucket files
         if s3_buckets:
             s3_bucket_dir = os.path.join(repo_root, "intake_configs", "s3_buckets")
             os.makedirs(s3_bucket_dir, exist_ok=True)
@@ -202,7 +186,7 @@ def create_multi_resource_pr(
                 created_files.append(yaml_path)
                 print(f"✅ Created S3 Bucket YAML: {yaml_path}")
 
-        # Create IAM role files in iam_roles folder
+        # Create IAM role files
         if iam_roles:
             iam_role_dir = os.path.join(repo_root, "intake_configs", "iam_roles")
             os.makedirs(iam_role_dir, exist_ok=True)
@@ -218,7 +202,6 @@ def create_multi_resource_pr(
                 created_files.append(yaml_path)
                 print(f"✅ Created IAM Role YAML: {yaml_path}")
 
-        # Add all created files to git
         repo.index.add(created_files)
 
         commit_msg = f"{pr_title}\n\n"
@@ -244,20 +227,22 @@ def create_multi_resource_pr(
             )
 
             return (
-                f"✅ PR created successfully!\n\n"
-                f"📋 {pr_title}\n"
-                f"📁 {len(glue_dbs)} Glue DB(s), {len(s3_buckets)} S3 Bucket(s), {len(iam_roles)} IAM Role(s)\n"
-                f"🔗 {pr['html_url']}"
+                f"🎉 Boom! Your PR is live!\n\n"
+                f"📋 **Title:** {pr_title}\n"
+                f"📦 **What's included:** {len(glue_dbs)} Glue DB(s), {len(s3_buckets)} S3 Bucket(s), {len(iam_roles)} IAM Role(s)\n"
+                f"🔗 **View it here:** {pr['html_url']}\n\n"
+                f"Great work! Your team can review it whenever they're ready. Need anything else? 😊"
             )
 
         except RuntimeError as pr_error:
             if "already exists" in str(pr_error).lower():
                 return (
-                    "⚠️ A PR already exists from your fork's dev to upstream dev.\n\n"
-                    "Options:\n"
-                    "1. Close the existing PR and create a new one\n"
-                    "2. Add to existing PR (changes already committed to your fork)\n\n"
-                    "Which would you prefer?"
+                    "🤔 Hmm, looks like you already have a PR open from your fork to upstream!\n\n"
+                    "**No worries though!** Your new changes are already committed to your fork's dev branch. "
+                    "Here are your options:\n\n"
+                    "1️⃣ **Keep the existing PR** - It'll automatically update with your new resources (easiest option!)\n"
+                    "2️⃣ **Close the old PR and start fresh** - Let me know and I'll create a brand new one\n\n"
+                    "What would you like to do?"
                 )
             raise pr_error
 
@@ -267,7 +252,7 @@ def create_multi_resource_pr(
 
 
 # =========================================================
-# Session - Updated to track IAM roles
+# Session
 # =========================================================
 session_store = {}
 
@@ -276,7 +261,7 @@ def get_session(sid: str = "default") -> dict:
         session_store[sid] = {
             "glue_dbs": [],
             "s3_buckets": [],
-            "iam_roles": [],  # NEW
+            "iam_roles": [],
             "current_resource_type": None,
             "awaiting_pr_title": False,
             "state": "idle"
@@ -325,6 +310,10 @@ def chat(req: ChatRequest):
         user_input = req.messages[-1].get("content", "").strip()
         user_lower = user_input.lower()
 
+        # Show validation help if requested
+        if "validation" in user_lower and "help" in user_lower:
+            return ChatResponse(response=get_validation_help())
+
         # State: Awaiting PR title
         if session.get("awaiting_pr_title"):
             if len(user_input.split()) > 2:
@@ -351,49 +340,17 @@ def chat(req: ChatRequest):
 
                     if resource_type == "glue_db":
                         glue = GlueDBPRInput(**parsed)
-                        session["glue_dbs"].append(parsed)
+                        session["glue_dbs"].append(glue.dict())
                         name = glue.database_name
                         resource_name = "Glue Database"
                     elif resource_type == "s3_bucket":
                         s3 = S3BucketPRInput(**parsed)
-                        session["s3_buckets"].append(parsed)
+                        session["s3_buckets"].append(s3.dict())
                         name = s3.bucket_name
                         resource_name = "S3 Bucket"
                     elif resource_type == "iam_role":
-                        # IAM roles need special handling for nested structures
-                        # For now, require key-value format
-                        if ',' in user_input and '\n' not in user_input:
-                            return ChatResponse(
-                                response=(
-                                    "⚠️ IAM roles have complex nested structures and require **key-value format**.\n\n"
-                                    "Please provide the data in this format:\n\n"
-                                    "```\n"
-                                    "intake_id: INT-901\n"
-                                    "role_name: analytics-readonly-role\n"
-                                    "role_description: Read-only IAM role for analytics\n"
-                                    "aws_account_id: 123456789012\n"
-                                    "enterprise_or_func_name: DataPlatform\n"
-                                    "enterprise_or_func_subgrp_name: Analytics\n"
-                                    "role_owner: analytics.owner@company.com\n"
-                                    "data_env: prod\n"
-                                    "usage_type: analytics\n"
-                                    "compute_size: medium\n"
-                                    "max_session_duration: 8\n"
-                                    "access_to_resources:\n"
-                                    "  glue_databases:\n"
-                                    "    read:\n"
-                                    "      - glue_db_sales\n"
-                                    "      - glue_db_marketing\n"
-                                    "  execution_asset_prefixes:\n"
-                                    "    - s3://exec-assets/analytics/\n"
-                                    "    - s3://exec-assets/shared/\n"
-                                    "```\n\n"
-                                    "Copy-paste this format and fill in your values!"
-                                )
-                            )
-
                         iam = IAMRolePRInput(**parsed)
-                        session["iam_roles"].append(parsed)
+                        session["iam_roles"].append(iam.dict())
                         name = iam.role_name
                         resource_name = "IAM Role"
 
@@ -402,28 +359,52 @@ def chat(req: ChatRequest):
 
                     return ChatResponse(
                         response=(
-                            f"✅ Got it! Collected {resource_name} '{name}'.\n\n"
-                            "Add another resource? (Glue Database, S3 Bucket, or IAM Role)\n"
-                            "Or type 'done' to create the PR."
+                            f"✅ Perfect! I've got all the details for your {resource_name} '{name}'.\n\n"
+                            f"Want to add more resources to this PR? You can add:\n"
+                            f"• Another Glue Database\n"
+                            f"• An S3 Bucket\n"
+                            f"• An IAM Role\n\n"
+                            f"Or just type **'done'** if you're ready to create the PR! 🚀"
                         )
                     )
 
+                except ValidationError as ve:
+                    # Format Pydantic validation errors nicely
+                    error_msg = format_validation_error(ve)
+
+                    # Add validation help for Glue DB errors
+                    if resource_type == "glue_db":
+                        error_msg += "\n\n💡 **Need help with validation rules?** Type 'validation help' to see all requirements."
+
+                    return ChatResponse(response=error_msg)
+
                 except Exception as e:
-                    return ChatResponse(response=f"❌ Validation error: {str(e)}\n\nPlease try again.")
+                    error_msg = str(e)
+                    print(f"\n❌ ERROR: {error_msg}")
+                    traceback.print_exc()
+
+                    return ChatResponse(
+                        response=f"❌ Validation error: {error_msg}\n\nPlease check your input and try again."
+                    )
 
         # State: User done collecting
         if "done" in user_lower or ("no" in user_lower and "more" in user_lower):
-            if not session["glue_dbs"] and not session["s3_buckets"] and not session["iam_roles"]:
-                return ChatResponse(response="No resources added yet. Add a Glue Database, S3 Bucket, or IAM Role?")
+            total_resources = len(session["glue_dbs"]) + len(session["s3_buckets"]) + len(session["iam_roles"])
+
+            if total_resources == 0:
+                return ChatResponse(
+                    response="Hmm, we haven't collected any resources yet! Would you like to add a Glue Database, S3 Bucket, or IAM Role? 🤔"
+                )
 
             session["awaiting_pr_title"] = True
             return ChatResponse(
                 response=(
-                    f"Perfect! You have:\n"
-                    f"- {len(session['glue_dbs'])} Glue DB(s)\n"
-                    f"- {len(session['s3_buckets'])} S3 Bucket(s)\n"
-                    f"- {len(session['iam_roles'])} IAM Role(s)\n\n"
-                    "What should the PR title be?"
+                    f"Awesome! Here's what we're packaging up:\n"
+                    f"📦 {len(session['glue_dbs'])} Glue Database(s)\n"
+                    f"📦 {len(session['s3_buckets'])} S3 Bucket(s)\n"
+                    f"📦 {len(session['iam_roles'])} IAM Role(s)\n\n"
+                    f"Now, let's give this PR a good title! What should we call it?\n"
+                    f"(Something descriptive like 'Add analytics resources for Q1 2025')"
                 )
             )
 
@@ -436,7 +417,7 @@ def chat(req: ChatRequest):
                     "ABSOLUTE RULE: You are NOT allowed to generate, invent, create, or make up ANY data values. "
                     "If the user has not provided actual field values yet, you MUST ask them to provide the values. "
                     "DO NOT show example values. DO NOT pretend you received data. "
-                    "ONLY confirm data collection AFTER the user has provided actual values in comma-separated or key-value format."
+                    "ONLY confirm data collection AFTER the user has provided actual values."
                 )
             }
         ]
@@ -477,4 +458,4 @@ def health():
         "groq": bool(os.getenv("GROQ_API_KEY")),
         "github": bool(os.getenv("GITHUB_TOKEN1")),
         "username": bool(os.getenv("GITHUB_USERNAME")),
-    } 
+    }

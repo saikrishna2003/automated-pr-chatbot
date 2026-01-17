@@ -72,20 +72,39 @@ You should ALWAYS mention both formats for Glue DB and S3 Buckets, but for IAM R
 
 GLUE DATABASE FIELDS (15 required):
 1. intake_id
-2. database_name
-3. database_s3_location
+2. database_name (MUST start with 'minerva')
+3. database_s3_location (MUST start with 's3://')
 4. database_description
-5. aws_account_id
+5. aws_account_id (exactly 12 digits)
 6. source_name
-7. enterprise_or_func_name
-8. enterprise_or_func_subgrp_name
-9. region
+7. enterprise_or_func_name (MUST be: AGTR, CORP, FOOD, or SPEC)
+8. enterprise_or_func_subgrp_name (MUST match parent enterprise - see validation rules below)
+9. region (AWS region format)
 10. data_construct
-11. data_env
-12. data_layer
+11. data_env (MUST be 'dev' or 'prd')
+12. data_layer (MUST be 'raw' or 'cln')
 13. data_leader
-14. data_owner_email
+14. data_owner_email (valid email format)
 15. data_owner_github_uname
+
+**CRITICAL VALIDATION RULES FOR GLUE DATABASES:**
+
+🏢 **Enterprise & Subgroup Hierarchy:**
+- AGTR → EMEA, NA, LATAM, APAC, WTG, WTG_CDAS, OT, CRM, TCM, MET
+- CORP → GI_SUST, EHS, FIN, GTC, CPT, HR, AUDIT, DTD, LAW, DTD_DPE, RMG, FSQR
+- FOOD → FSGL, FS_NA, FS_LATAM, FS_APAC, FS_EMEA, PRGL, PR_LATAM, PR_NA, PR_APAC, SALT, CE, RD
+- SPEC → ANH, CBI, DS
+
+📝 **Example:**
+- Valid: enterprise="SPEC", subgroup="ANH" ✓
+- Invalid: enterprise="SPEC", subgroup="HR" ✗ (HR is for CORP only)
+
+🔍 **Other Rules:**
+- database_name: Must start with "minerva" (e.g., minerva_dev_sales_db)
+- data_env: Only "dev" or "prd"
+- data_layer: Only "raw" (raw data) or "cln" (cleaned/curated data)
+
+If a user provides invalid values, the system will show detailed error messages explaining what's wrong and what values are valid for their enterprise function.
 
 S3 BUCKET FIELDS (7 required):
 1. intake_id
