@@ -24,14 +24,14 @@ if str(app_dir) not in sys.path:
 try:
     from prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS, IAM_ROLE_FIELDS
     from tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml, get_validation_help
-    from tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml
+    from tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml, get_s3_validation_help
     from tools.iam_role_tool import IAMRolePRInput, create_iam_role_yaml
     from services.yaml_generator import generate_yaml
     from services.git_ops import create_pull_request
 except ImportError:
     from app.prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS, IAM_ROLE_FIELDS
     from app.tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml, get_validation_help
-    from app.tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml
+    from app.tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml, get_s3_validation_help
     from app.tools.iam_role_tool import IAMRolePRInput, create_iam_role_yaml
     from app.services.yaml_generator import generate_yaml
     from app.services.git_ops import create_pull_request
@@ -294,6 +294,15 @@ def chat(req: ChatRequest):
     try:
         session = get_session(req.session_id)
 
+        print(f"\n{'='*60}")
+        print(f"📨 INCOMING REQUEST")
+        print(f"Session ID: {req.session_id}")
+        print(f"User input: {req.messages[-1].get('content', '') if req.messages else 'None'}")
+        print(f"Session state: awaiting_pr_title={session.get('awaiting_pr_title')}")
+        print(f"Resources collected: {len(session.get('glue_dbs', []))} Glue, {len(session.get('s3_buckets', []))} S3, {len(session.get('iam_roles', []))} IAM")
+        print(f"Current resource type: {session.get('current_resource_type')}")
+        print(f"{'='*60}\n")
+
         if not req.messages:
             return ChatResponse(
                 response=(
@@ -316,7 +325,8 @@ def chat(req: ChatRequest):
 
         # State: Awaiting PR title
         if session.get("awaiting_pr_title"):
-            if len(user_input.split()) > 2:
+            # User must provide an actual title (more than 2 words)
+            if len(user_input.split()) >= 3:
                 result = create_multi_resource_pr(
                     glue_dbs=session["glue_dbs"],
                     s3_buckets=session["s3_buckets"],
@@ -325,6 +335,10 @@ def chat(req: ChatRequest):
                 )
                 session_store[req.session_id] = get_session("new")
                 return ChatResponse(response=result)
+            else:
+                return ChatResponse(
+                    response="Please provide a descriptive PR title (at least 3 words). For example: 'Add sales analytics Glue database for LATAM'"
+                )
 
         # State: Collecting data
         has_separators = (',' in user_input or (':' in user_input and '\n' in user_input))
@@ -388,7 +402,7 @@ def chat(req: ChatRequest):
                     )
 
         # State: User done collecting
-        if "done" in user_lower or ("no" in user_lower and "more" in user_lower):
+        if any(keyword in user_lower for keyword in ["done", "create pr", "make pr", "generate pr", "finish"]) or ("no" in user_lower and "more" in user_lower):
             total_resources = len(session["glue_dbs"]) + len(session["s3_buckets"]) + len(session["iam_roles"])
 
             if total_resources == 0:
@@ -404,7 +418,7 @@ def chat(req: ChatRequest):
                     f"📦 {len(session['s3_buckets'])} S3 Bucket(s)\n"
                     f"📦 {len(session['iam_roles'])} IAM Role(s)\n\n"
                     f"Now, let's give this PR a good title! What should we call it?\n"
-                    f"(Something descriptive like 'Add analytics resources for Q1 2025')"
+                    f"(Something descriptive like 'Add sales analytics Glue database for LATAM')"
                 )
             )
 
