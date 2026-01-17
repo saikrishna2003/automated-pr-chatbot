@@ -1,7 +1,0 @@
-intake_id: INT-45890
-bucket_name: sales-data-bucket_dev
-bucket_description: S3 bucket for sales analytics data and for storing
-aws_account_id: '987654321098'
-aws_region: us-east-1
-usage_type: data
-enterprise_or_func_name: CORP1

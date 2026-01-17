@@ -1,7 +1,0 @@
-intake_id: INT-4564
-bucket_name: sales-data-bucket1
-bucket_description: S3 bucket for sales analytics data
-aws_account_id: '987654321098'
-aws_region: us-east-1
-usage_type: analytics
-enterprise_or_func_name: AGTR
