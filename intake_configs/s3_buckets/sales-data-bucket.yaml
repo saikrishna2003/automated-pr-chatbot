@@ -1,7 +1,0 @@
-intake_id: INT-456
-bucket_name: sales-data-bucket
-bucket_description: S3 bucket for sales analytics data
-aws_account_id: '987654321098'
-aws_region: us-east-1
-usage_type: analytics and required fiels
-enterprise_or_func_name: AGTR12
