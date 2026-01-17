@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MIW Data Platform Assistant",
-  "description": "AI assistant for creating Glue Database and S3 Bucket PRs",
-  "version": "2.0.0",
+  "description": "AI assistant for creating Glue Database, S3 Bucket, and IAM Role PRs",
+  "version": "4.0.0",
   "permissions": ["activeTab"],
   "content_scripts": [
     {

@@ -1,7 +1,7 @@
 """
 Data Platform Intake Bot - Main API
+UPDATED: Now supports IAM Roles
 STRICT VERSION: No data hallucination allowed
-Fixed to prevent duplicate Glue DB creation in intake_configs
 """
 
 from fastapi import FastAPI
@@ -23,21 +23,23 @@ if str(app_dir) not in sys.path:
     sys.path.insert(0, str(app_dir))
 
 try:
-    from prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS
+    from prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS, IAM_ROLE_FIELDS
     from tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml
     from tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml
+    from tools.iam_role_tool import IAMRolePRInput, create_iam_role_yaml
     from services.yaml_generator import generate_yaml
     from services.git_ops import create_pull_request
 except ImportError:
-    from app.prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS
+    from app.prompts.system_prompt import SYSTEM_PROMPT, GLUE_DB_FIELDS, S3_BUCKET_FIELDS, IAM_ROLE_FIELDS
     from app.tools.glue_pr_tool import GlueDBPRInput, create_glue_db_yaml
     from app.tools.s3_pr_tool import S3BucketPRInput, create_s3_bucket_yaml
+    from app.tools.iam_role_tool import IAMRolePRInput, create_iam_role_yaml
     from app.services.yaml_generator import generate_yaml
     from app.services.git_ops import create_pull_request
 
 load_dotenv()
 
-app = FastAPI(title="Data Platform Intake Bot", version="3.0.0")
+app = FastAPI(title="Data Platform Intake Bot", version="4.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -75,7 +77,40 @@ def parse_key_value(text: str) -> Dict[str, str]:
 
 
 def smart_parse_input(text: str, resource_type: str) -> Dict[str, str]:
-    field_list = GLUE_DB_FIELDS if resource_type == 'glue_db' else S3_BUCKET_FIELDS
+    if resource_type == 'glue_db':
+        field_list = GLUE_DB_FIELDS
+    elif resource_type == 's3_bucket':
+        field_list = S3_BUCKET_FIELDS
+    elif resource_type == 'iam_role':
+        # IAM roles require special handling due to nested structures
+        # For now, we'll only support key-value format for IAM roles
+        if '\n' not in text and ':' not in text:
+            raise ValueError(
+                "IAM roles must be provided in key-value format due to complex nested structures.\n\n"
+                "Please provide the data like this:\n"
+                "intake_id: INT-901\n"
+                "role_name: analytics-readonly-role\n"
+                "role_description: Read-only IAM role\n"
+                "aws_account_id: 123456789012\n"
+                "enterprise_or_func_name: DataPlatform\n"
+                "enterprise_or_func_subgrp_name: Analytics\n"
+                "role_owner: analytics.owner@company.com\n"
+                "data_env: prod\n"
+                "usage_type: analytics\n"
+                "compute_size: medium\n"
+                "max_session_duration: 8\n"
+                "access_to_resources:\n"
+                "  glue_databases:\n"
+                "    read:\n"
+                "      - glue_db_sales\n"
+                "      - glue_db_marketing\n"
+                "  execution_asset_prefixes:\n"
+                "    - s3://exec-assets/analytics/\n"
+                "    - s3://exec-assets/shared/"
+            )
+        return parse_key_value(text)
+    else:
+        raise ValueError(f"Unknown resource type: {resource_type}")
 
     if '\n' in text:
         return parse_key_value(text)
@@ -86,9 +121,14 @@ def smart_parse_input(text: str, resource_type: str) -> Dict[str, str]:
 
 
 # =========================================================
-# PR Creation - FIXED to prevent duplicate Glue DB files
+# PR Creation - Supports Glue DB, S3, and IAM Roles
 # =========================================================
-def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_title: str) -> str:
+def create_multi_resource_pr(
+    glue_dbs: List[Dict],
+    s3_buckets: List[Dict],
+    iam_roles: List[Dict],
+    pr_title: str
+) -> str:
     try:
         from git import Repo
 
@@ -113,7 +153,7 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
 
         created_files = []
 
-        # FIXED: Only create Glue DB files in glue_databases folder
+        # Create Glue DB files in glue_databases folder
         if glue_dbs:
             glue_db_dir = os.path.join(repo_root, "intake_configs", "glue_databases")
             os.makedirs(glue_db_dir, exist_ok=True)
@@ -121,8 +161,6 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
             for glue_data in glue_dbs:
                 glue_input = GlueDBPRInput(**glue_data)
                 yaml_content = generate_yaml(create_glue_db_yaml(glue_input))
-
-                # Create file ONLY in glue_databases folder
                 yaml_path = os.path.join(glue_db_dir, f"{glue_input.database_name}.yaml")
 
                 with open(yaml_path, "w", encoding="utf-8") as f:
@@ -131,7 +169,7 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
                 created_files.append(yaml_path)
                 print(f"✅ Created Glue DB YAML: {yaml_path}")
 
-        # S3 buckets remain in their own folder
+        # Create S3 bucket files in s3_buckets folder
         if s3_buckets:
             s3_bucket_dir = os.path.join(repo_root, "intake_configs", "s3_buckets")
             os.makedirs(s3_bucket_dir, exist_ok=True)
@@ -139,8 +177,6 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
             for s3_data in s3_buckets:
                 s3_input = S3BucketPRInput(**s3_data)
                 yaml_content = generate_yaml(create_s3_bucket_yaml(s3_input))
-
-                # Create file in s3_buckets folder
                 yaml_path = os.path.join(s3_bucket_dir, f"{s3_input.bucket_name}.yaml")
 
                 with open(yaml_path, "w", encoding="utf-8") as f:
@@ -148,6 +184,22 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
 
                 created_files.append(yaml_path)
                 print(f"✅ Created S3 Bucket YAML: {yaml_path}")
+
+        # Create IAM role files in iam_roles folder
+        if iam_roles:
+            iam_role_dir = os.path.join(repo_root, "intake_configs", "iam_roles")
+            os.makedirs(iam_role_dir, exist_ok=True)
+
+            for iam_data in iam_roles:
+                iam_input = IAMRolePRInput(**iam_data)
+                yaml_content = generate_yaml(create_iam_role_yaml(iam_input))
+                yaml_path = os.path.join(iam_role_dir, f"{iam_input.role_name}.yaml")
+
+                with open(yaml_path, "w", encoding="utf-8") as f:
+                    f.write(yaml_content)
+
+                created_files.append(yaml_path)
+                print(f"✅ Created IAM Role YAML: {yaml_path}")
 
         # Add all created files to git
         repo.index.add(created_files)
@@ -157,6 +209,8 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
             commit_msg += f"- Added {len(glue_dbs)} Glue Database(s)\n"
         if s3_buckets:
             commit_msg += f"- Added {len(s3_buckets)} S3 Bucket(s)\n"
+        if iam_roles:
+            commit_msg += f"- Added {len(iam_roles)} IAM Role(s)\n"
 
         repo.index.commit(commit_msg.strip())
         repo.remote("origin").push("dev")
@@ -168,13 +222,14 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
                 pr_title=pr_title,
                 pr_body=f"## Resources\n\n"
                         f"{f'- {len(glue_dbs)} Glue DB(s)' if glue_dbs else ''}\n"
-                        f"{f'- {len(s3_buckets)} S3 Bucket(s)' if s3_buckets else ''}"
+                        f"{f'- {len(s3_buckets)} S3 Bucket(s)' if s3_buckets else ''}\n"
+                        f"{f'- {len(iam_roles)} IAM Role(s)' if iam_roles else ''}"
             )
 
             return (
                 f"✅ PR created successfully!\n\n"
                 f"📋 {pr_title}\n"
-                f"📁 {len(glue_dbs)} Glue DB(s), {len(s3_buckets)} S3 Bucket(s)\n"
+                f"📁 {len(glue_dbs)} Glue DB(s), {len(s3_buckets)} S3 Bucket(s), {len(iam_roles)} IAM Role(s)\n"
                 f"🔗 {pr['html_url']}"
             )
 
@@ -195,7 +250,7 @@ def create_multi_resource_pr(glue_dbs: List[Dict], s3_buckets: List[Dict], pr_ti
 
 
 # =========================================================
-# Session
+# Session - Updated to track IAM roles
 # =========================================================
 session_store = {}
 
@@ -204,9 +259,10 @@ def get_session(sid: str = "default") -> dict:
         session_store[sid] = {
             "glue_dbs": [],
             "s3_buckets": [],
+            "iam_roles": [],  # NEW
             "current_resource_type": None,
             "awaiting_pr_title": False,
-            "state": "idle"  # idle, choosing_resource, collecting_data, confirming
+            "state": "idle"
         }
     return session_store[sid]
 
@@ -228,7 +284,7 @@ class ChatResponse(BaseModel):
 # =========================================================
 @app.get("/")
 def root():
-    return {"status": "online", "service": "Data Platform Intake Bot", "version": "3.0.0"}
+    return {"status": "online", "service": "Data Platform Intake Bot", "version": "4.0.0"}
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -242,7 +298,8 @@ def chat(req: ChatRequest):
                     "👋 Hey there! I'm your MIW Data Platform Assistant!\n\n"
                     "I'm here to help you create automated Pull Requests for:\n"
                     "✨ **Glue Databases**\n"
-                    "✨ **S3 Buckets**\n\n"
+                    "✨ **S3 Buckets**\n"
+                    "✨ **IAM Roles**\n\n"
                     "No more manual YAML editing or Git gymnastics - just chat with me and I'll handle all the technical stuff! 🚀\n\n"
                     "So, what are we building today?"
                 )
@@ -257,12 +314,13 @@ def chat(req: ChatRequest):
                 result = create_multi_resource_pr(
                     glue_dbs=session["glue_dbs"],
                     s3_buckets=session["s3_buckets"],
+                    iam_roles=session["iam_roles"],
                     pr_title=user_input
                 )
                 session_store[req.session_id] = get_session("new")
                 return ChatResponse(response=result)
 
-        # State: Collecting data (must have commas or colons and be substantial)
+        # State: Collecting data
         has_separators = (',' in user_input or (':' in user_input and '\n' in user_input))
         is_substantial = len(user_input) > 40
         is_not_question = not any(q in user_lower for q in ['what', 'how', 'which', 'prefer', '?', 'format', 'option'])
@@ -279,11 +337,16 @@ def chat(req: ChatRequest):
                         session["glue_dbs"].append(parsed)
                         name = glue.database_name
                         resource_name = "Glue Database"
-                    else:
+                    elif resource_type == "s3_bucket":
                         s3 = S3BucketPRInput(**parsed)
                         session["s3_buckets"].append(parsed)
                         name = s3.bucket_name
                         resource_name = "S3 Bucket"
+                    elif resource_type == "iam_role":
+                        iam = IAMRolePRInput(**parsed)
+                        session["iam_roles"].append(parsed)
+                        name = iam.role_name
+                        resource_name = "IAM Role"
 
                     session["current_resource_type"] = None
                     session["state"] = "confirming"
@@ -291,7 +354,7 @@ def chat(req: ChatRequest):
                     return ChatResponse(
                         response=(
                             f"✅ Got it! Collected {resource_name} '{name}'.\n\n"
-                            "Add another resource? (Glue Database or S3 Bucket)\n"
+                            "Add another resource? (Glue Database, S3 Bucket, or IAM Role)\n"
                             "Or type 'done' to create the PR."
                         )
                     )
@@ -301,20 +364,21 @@ def chat(req: ChatRequest):
 
         # State: User done collecting
         if "done" in user_lower or ("no" in user_lower and "more" in user_lower):
-            if not session["glue_dbs"] and not session["s3_buckets"]:
-                return ChatResponse(response="No resources added yet. Add a Glue Database or S3 Bucket?")
+            if not session["glue_dbs"] and not session["s3_buckets"] and not session["iam_roles"]:
+                return ChatResponse(response="No resources added yet. Add a Glue Database, S3 Bucket, or IAM Role?")
 
             session["awaiting_pr_title"] = True
             return ChatResponse(
                 response=(
                     f"Perfect! You have:\n"
                     f"- {len(session['glue_dbs'])} Glue DB(s)\n"
-                    f"- {len(session['s3_buckets'])} S3 Bucket(s)\n\n"
+                    f"- {len(session['s3_buckets'])} S3 Bucket(s)\n"
+                    f"- {len(session['iam_roles'])} IAM Role(s)\n\n"
                     "What should the PR title be?"
                 )
             )
 
-        # LLM conversation with STRICT anti-hallucination prompt
+        # LLM conversation
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -338,6 +402,9 @@ def chat(req: ChatRequest):
             session["state"] = "collecting_data"
         elif "s3" in resp_lower and "bucket" in resp_lower:
             session["current_resource_type"] = "s3_bucket"
+            session["state"] = "collecting_data"
+        elif "iam" in resp_lower and "role" in resp_lower:
+            session["current_resource_type"] = "iam_role"
             session["state"] = "collecting_data"
 
         return ChatResponse(response=llm_response.content)

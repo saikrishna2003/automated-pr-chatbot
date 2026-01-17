@@ -21,6 +21,8 @@ chatbot.innerHTML = `
       • <strong>Glue Databases</strong> - Database configurations
       <br />
       • <strong>S3 Buckets</strong> - Storage bucket setups
+      <br />
+      • <strong>IAM Roles</strong> - Access management configurations
       <br /><br />
       Just tell me what you'd like to create and I'll guide you through it! 🚀
     </div>
