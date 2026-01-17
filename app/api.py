@@ -65,6 +65,23 @@ def parse_comma_separated(text: str, field_list: List[str]) -> Dict[str, str]:
 
 
 def parse_key_value(text: str) -> Dict[str, str]:
+    """
+    Parse key-value format input
+    Handles both simple and nested YAML structures
+    """
+    import yaml
+
+    # Try to parse as YAML first for nested structures
+    try:
+        # Check if it looks like YAML (has proper newlines and indentation)
+        if '\n' in text and (':' in text):
+            parsed = yaml.safe_load(text)
+            if isinstance(parsed, dict):
+                return parsed
+    except:
+        pass
+
+    # Fallback to simple key-value parsing
     result = {}
     for line in text.strip().split('\n'):
         line = line.strip()
@@ -343,6 +360,38 @@ def chat(req: ChatRequest):
                         name = s3.bucket_name
                         resource_name = "S3 Bucket"
                     elif resource_type == "iam_role":
+                        # IAM roles need special handling for nested structures
+                        # For now, require key-value format
+                        if ',' in user_input and '\n' not in user_input:
+                            return ChatResponse(
+                                response=(
+                                    "⚠️ IAM roles have complex nested structures and require **key-value format**.\n\n"
+                                    "Please provide the data in this format:\n\n"
+                                    "```\n"
+                                    "intake_id: INT-901\n"
+                                    "role_name: analytics-readonly-role\n"
+                                    "role_description: Read-only IAM role for analytics\n"
+                                    "aws_account_id: 123456789012\n"
+                                    "enterprise_or_func_name: DataPlatform\n"
+                                    "enterprise_or_func_subgrp_name: Analytics\n"
+                                    "role_owner: analytics.owner@company.com\n"
+                                    "data_env: prod\n"
+                                    "usage_type: analytics\n"
+                                    "compute_size: medium\n"
+                                    "max_session_duration: 8\n"
+                                    "access_to_resources:\n"
+                                    "  glue_databases:\n"
+                                    "    read:\n"
+                                    "      - glue_db_sales\n"
+                                    "      - glue_db_marketing\n"
+                                    "  execution_asset_prefixes:\n"
+                                    "    - s3://exec-assets/analytics/\n"
+                                    "    - s3://exec-assets/shared/\n"
+                                    "```\n\n"
+                                    "Copy-paste this format and fill in your values!"
+                                )
+                            )
+
                         iam = IAMRolePRInput(**parsed)
                         session["iam_roles"].append(parsed)
                         name = iam.role_name
