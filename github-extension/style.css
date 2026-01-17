@@ -1,134 +1,260 @@
 /* =========================================================
-   Data Platform Intake Bot - Clean GitHub UI
+   Data Platform Intake Bot - Professional Dark Theme
    ========================================================= */
 
 #dpib-chatbot {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 380px;
-  height: 520px;
-  background: #ffffff;
-  border: 1px solid #d0d7de;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  bottom: 24px;
+  right: 24px;
+  width: 400px;
+  height: 580px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03);
   display: flex;
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   z-index: 10000;
+  overflow: hidden;
 }
 
 /* Header */
 #dpib-header {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-  padding: 16px 20px;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: #f0f6fc;
+  padding: 18px 22px;
   font-weight: 600;
   font-size: 15px;
-  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid #21262d;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-/* Messages */
+#dpib-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#dpib-header-title::before {
+  content: "●";
+  color: #3fb950;
+  font-size: 12px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+#dpib-minimize {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#dpib-minimize:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f6fc;
+}
+
+/* Minimized State */
+#dpib-chatbot.minimized {
+  height: 56px;
+}
+
+#dpib-chatbot.minimized #dpib-messages,
+#dpib-chatbot.minimized #dpib-input-container {
+  display: none;
+}
+
+/* Messages Container */
 #dpib-messages {
   flex: 1;
-  padding: 16px;
+  padding: 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: #f6f8fa;
+  gap: 14px;
+  background: #010409;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d #0d1117;
 }
 
-/* Bubbles */
+#dpib-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+#dpib-messages::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+#dpib-messages::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+#dpib-messages::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* Message Bubbles */
 .dpib-bot,
 .dpib-user {
-  max-width: 85%;
-  padding: 12px 16px;
+  max-width: 82%;
+  padding: 13px 17px;
   border-radius: 12px;
   font-size: 14px;
-  line-height: 1.5;
-  animation: fadeIn 0.2s ease;
+  line-height: 1.6;
+  animation: fadeIn 0.3s ease;
+  word-wrap: break-word;
 }
 
 .dpib-bot {
-  background: #ffffff;
-  border: 1px solid #d0d7de;
-  color: #24292f;
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #e6edf3;
   align-self: flex-start;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dpib-bot strong {
+  color: #58a6ff;
+  font-weight: 600;
 }
 
 .dpib-user {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: linear-gradient(135deg, #238636 0%, #1f6feb 100%);
+  color: #ffffff;
   align-self: flex-end;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 12px rgba(31, 111, 235, 0.4);
+  font-weight: 500;
 }
 
 .dpib-error {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: #1c1917;
+  border: 1px solid #da3633;
+  color: #ff7b72;
+  box-shadow: 0 2px 8px rgba(218, 54, 51, 0.2);
 }
 
-/* Typing dots */
+/* Typing Indicator */
 .dpib-typing {
   display: flex;
   gap: 6px;
+  padding: 16px 18px;
+  align-items: center;
 }
 
 .dpib-typing span {
   width: 8px;
   height: 8px;
-  background: #6366f1;
+  background: #58a6ff;
   border-radius: 50%;
-  animation: bounce 1.2s infinite;
+  animation: bounce 1.2s infinite ease-in-out;
 }
 
-.dpib-typing span:nth-child(2) { animation-delay: 0.2s; }
-.dpib-typing span:nth-child(3) { animation-delay: 0.4s; }
+.dpib-typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
 
-/* Input */
+.dpib-typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Input Container */
 #dpib-input-container {
   display: flex;
-  gap: 8px;
-  padding: 16px;
-  border-top: 1px solid #d0d7de;
+  gap: 10px;
+  padding: 18px;
+  border-top: 1px solid #21262d;
+  background: #0d1117;
 }
 
 #dpib-input {
   flex: 1;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid #d0d7de;
+  padding: 11px 15px;
+  border-radius: 10px;
+  border: 1px solid #30363d;
   font-size: 14px;
   outline: none;
+  background: #010409;
+  color: #e6edf3;
+  transition: all 0.2s ease;
+}
+
+#dpib-input::placeholder {
+  color: #7d8590;
 }
 
 #dpib-input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: #1f6feb;
+  background: #0d1117;
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
 }
 
 #dpib-send {
-  padding: 10px 18px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  padding: 11px 22px;
+  background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
   border: none;
-  color: white;
-  border-radius: 8px;
+  color: #ffffff;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(35, 134, 54, 0.3);
+  font-size: 14px;
 }
 
 #dpib-send:hover {
-  opacity: 0.95;
+  background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(35, 134, 54, 0.4);
+}
+
+#dpib-send:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(35, 134, 54, 0.3);
 }
 
 /* Animations */
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }

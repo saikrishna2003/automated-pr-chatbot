@@ -6,7 +6,8 @@ chatbot.id = "dpib-chatbot";
 
 chatbot.innerHTML = `
   <div id="dpib-header">
-    Data Platform Intake Bot
+    <div id="dpib-header-title">Data Platform Intake Bot</div>
+    <button id="dpib-minimize" title="Minimize">−</button>
   </div>
 
   <div id="dpib-messages">
@@ -31,11 +32,30 @@ chatbot.innerHTML = `
 // ---- Append to page ----
 document.body.appendChild(chatbot);
 
-// ---- Chat logic ----
+// ---- Get elements ----
 const input = chatbot.querySelector("#dpib-input");
 const button = chatbot.querySelector("#dpib-send");
 const messages = chatbot.querySelector("#dpib-messages");
+const minimizeBtn = chatbot.querySelector("#dpib-minimize");
 
+// ---- Minimize functionality ----
+let isMinimized = false;
+
+minimizeBtn.addEventListener("click", () => {
+  isMinimized = !isMinimized;
+
+  if (isMinimized) {
+    chatbot.classList.add("minimized");
+    minimizeBtn.textContent = "□";
+    minimizeBtn.title = "Maximize";
+  } else {
+    chatbot.classList.remove("minimized");
+    minimizeBtn.textContent = "−";
+    minimizeBtn.title = "Minimize";
+  }
+});
+
+// ---- Chat logic ----
 let conversation = [];
 
 function addMessage(text, className) {
