@@ -6,15 +6,23 @@ chatbot.id = "dpib-chatbot";
 
 chatbot.innerHTML = `
   <div id="dpib-header">
-    <div id="dpib-header-title">Data Platform Intake Bot</div>
+    <div id="dpib-header-title">Intake Automation Bot</div>
     <button id="dpib-minimize" title="Minimize">−</button>
   </div>
 
   <div id="dpib-messages">
     <div class="dpib-bot">
-      👋 Hi! I can help you create automated Glue Database PRs.
+      👋 Hi! I'm your <strong>Intake Automation PR Bot</strong>
       <br /><br />
-      Try saying: <strong>I want to create a Glue Database PR</strong>
+      I'll help you create automated pull requests for your data platform resources - no manual YAML editing needed!
+      <br /><br />
+      I can assist you with:
+      <br />
+      • <strong>Glue Databases</strong> - Database configurations
+      <br />
+      • <strong>S3 Buckets</strong> - Storage bucket setups
+      <br /><br />
+      Just tell me what you'd like to create and I'll guide you through it! 🚀
     </div>
   </div>
 
@@ -22,7 +30,7 @@ chatbot.innerHTML = `
     <input
       id="dpib-input"
       type="text"
-      placeholder="Type your message..."
+      placeholder="What would you like to create today?"
       autocomplete="off"
     />
     <button id="dpib-send">Send</button>
@@ -90,6 +98,10 @@ async function sendMessage() {
 
     typingDiv.remove();
 
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+
     const data = await response.json();
     addMessage(data.response, "dpib-bot");
     conversation.push({ role: "assistant", content: data.response });
@@ -97,16 +109,18 @@ async function sendMessage() {
   } catch (err) {
     typingDiv.remove();
     addMessage(
-      "⚠️ Backend not reachable. Make sure the server is running on port 8000.",
+      "⚠️ Hmm, I'm having trouble connecting to the backend right now. Please make sure the server is running on port 8000.",
       "dpib-bot dpib-error"
     );
+    console.error("Backend error:", err);
   }
 }
 
 button.addEventListener("click", sendMessage);
 
 input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
     sendMessage();
   }
 });
