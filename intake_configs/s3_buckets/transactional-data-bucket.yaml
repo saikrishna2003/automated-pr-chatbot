@@ -1,0 +1,8 @@
+resource_type: s3_bucket
+intake_id: INT-678
+bucket_name: transactional-data-bucket
+bucket_description: S3 bucket for sales analytics data
+aws_account_id: '987654321098'
+aws_region: us-east-1
+usage_type: analysis
+enterprise_or_func_name: CORP
