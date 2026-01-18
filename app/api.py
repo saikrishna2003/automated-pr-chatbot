@@ -236,14 +236,22 @@ def create_multi_resource_pr(
 
         except RuntimeError as pr_error:
             if "already exists" in str(pr_error).lower():
-                return (
-                    "🤔 Hmm, looks like you already have a PR open from your fork to upstream!\n\n"
-                    "**No worries though!** Your new changes are already committed to your fork's dev branch. "
-                    "Here are your options:\n\n"
-                    "1️⃣ **Keep the existing PR** - It'll automatically update with your new resources (easiest option!)\n"
-                    "2️⃣ **Close the old PR and start fresh** - Let me know and I'll create a brand new one\n\n"
-                    "What would you like to do?"
+                # Set flag that PR conflict was detected
+                session["pr_conflict_detected"] = True
+
+                response_msg = (
+                    "🤔 A PR already exists from your fork to upstream!\n\n"
+                    "**Good news!** Your new changes have been committed to your fork's dev branch. "
+                    "They will automatically appear in the existing PR.\n\n"
+                    "📦 What was added:\n"
+                    f"• {len(glue_dbs)} Glue Database(s)\n"
+                    f"• {len(s3_buckets)} S3 Bucket(s)\n"
+                    f"• {len(iam_roles)} IAM Role(s)\n\n"
+                    "✅ Check your existing PR - it should now include these new resources!\n\n"
+                    "Want to create more resources? Just tell me what you'd like to add! 😊"
                 )
+
+                return response_msg
             raise pr_error
 
     except Exception as e:
@@ -264,6 +272,7 @@ def get_session(sid: str = "default") -> dict:
             "iam_roles": [],
             "current_resource_type": None,
             "awaiting_pr_title": False,
+            "pr_conflict_detected": False,
             "state": "idle"
         }
     return session_store[sid]
@@ -319,9 +328,28 @@ def chat(req: ChatRequest):
         user_input = req.messages[-1].get("content", "").strip()
         user_lower = user_input.lower()
 
+        # Handle "keep existing PR" or "option 1" responses
+        if session.get("pr_conflict_detected"):
+            if any(keyword in user_lower for keyword in ["keep", "option 1", "1", "existing"]):
+                # User acknowledged the conflict, reset and continue
+                session["pr_conflict_detected"] = False
+                session_store[req.session_id] = get_session("new")
+                return ChatResponse(
+                    response="Got it! Your changes are in the existing PR. Let's start fresh - what would you like to create next?"
+                )
+
         # Show validation help if requested
         if "validation" in user_lower and "help" in user_lower:
-            return ChatResponse(response=get_validation_help())
+            # Check which resource type they're asking about
+            if "glue" in user_lower or session.get("current_resource_type") == "glue_db":
+                return ChatResponse(response=get_validation_help())
+            elif "s3" in user_lower or session.get("current_resource_type") == "s3_bucket":
+                return ChatResponse(response=get_s3_validation_help())
+            else:
+                # Show both
+                return ChatResponse(
+                    response=get_validation_help() + "\n\n" + get_s3_validation_help()
+                )
 
         # State: Awaiting PR title
         if session.get("awaiting_pr_title"):
