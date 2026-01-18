@@ -6,7 +6,7 @@ database_description: Glue database for sales analytics reporting
 aws_account_id: '123456789012'
 source_name: salesforce
 enterprise_or_func_name: AGTR
-enterprise_or_func_subgrp_name: OT
+enterprise_or_func_subgrp_name: NA
 region: us-east-1
 data_construct: transactional
 data_env: dev
