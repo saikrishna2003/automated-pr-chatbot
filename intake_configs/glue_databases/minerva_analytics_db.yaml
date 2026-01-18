@@ -1,0 +1,16 @@
+resource_type: glue_database
+intake_id: INT-001
+database_name: minerva_analytics_db
+database_s3_location: s3://company-data-lake/sales/analytics
+database_description: Glue database for sales analytics reporting
+aws_account_id: '123456789012'
+source_name: salesforce
+enterprise_or_func_name: AGTR
+enterprise_or_func_subgrp_name: OT
+region: us-east-1
+data_construct: transactional
+data_env: dev
+data_layer: raw
+data_leader: John Doe
+data_owner_email: john.doe@company.com
+data_owner_github_uname: johndoe
