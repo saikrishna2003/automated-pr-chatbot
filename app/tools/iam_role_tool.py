@@ -219,4 +219,4 @@ def get_iam_role_file_path(role_name: str, base_path: str = "intake_configs") ->
     os.makedirs(iam_role_folder, exist_ok=True)
 
     filename = f"{role_name}.yaml"
-    return os.path.join(iam_role_folder, filename)
+    return os.path.join(iam_role_folder, filename) 
